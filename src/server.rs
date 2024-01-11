@@ -1,8 +1,8 @@
+mod def;
 mod ext;
-mod file;
 mod main;
+pub use def::daemon::main_server::MainServer;
+pub use def::daemon::ExtInfo;
+pub use def::extension::ext_server::ExtServer;
 pub use ext::Ext;
-pub use file::daemon::ext_server::ExtServer;
-pub use file::daemon::main_server::MainServer;
-pub use file::daemon::ExtInfo;
 pub use main::Main;

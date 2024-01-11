@@ -1,10 +1,13 @@
 use xlog_rs::log;
 
-use super::file::{daemon, defs};
+use super::def::{common, daemon, extension};
 use crate::config;
+use common::Empty;
+use daemon::ExtInfo;
+use daemon::FastConfig;
+use daemon::FastExtInfo;
 use std::borrow::BorrowMut;
 use std::sync::{Arc, Mutex};
-
 pub struct Main {
     config: Arc<Mutex<config::Config>>,
     handle: Mutex<std::collections::HashMap<String, std::process::Child>>,
@@ -12,6 +15,16 @@ pub struct Main {
 
 impl Main {
     pub fn new(cfg: &Arc<Mutex<config::Config>>) -> Self {
+        cfg.lock().unwrap().file.exts.insert(
+            "test".to_string(),
+            ExtInfo {
+                name: "qst-e-a".to_string(),
+                prompt: "-".to_string(),
+                dir: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug".to_string(),
+                exec: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug/qst-e-a".to_string(),
+                addr: "".to_string(),
+            },
+        );
         Self {
             config: Arc::clone(&cfg),
             handle: Mutex::new(std::collections::HashMap::new()),
@@ -23,8 +36,8 @@ impl Main {
 impl daemon::main_server::Main for Main {
     async fn set_up(
         &self,
-        _: tonic::Request<defs::Empty>,
-    ) -> std::result::Result<tonic::Response<daemon::Prompt2Addr>, tonic::Status> {
+        _: tonic::Request<Empty>,
+    ) -> std::result::Result<tonic::Response<daemon::FastConfig>, tonic::Status> {
         // let mut res = std::collections::HashMap::new();
         // for (_, v) in self.config.lock().file.exts.iter() {
         //     if v.addr != "" {
@@ -36,47 +49,42 @@ impl daemon::main_server::Main for Main {
         //         server::set_up_result::MOk { running: res },
         //     )),
         // }))
+        let mut binding = self.config.lock().unwrap();
+        let exts = &binding.borrow_mut().file.exts;
+        let fexts = exts
+            .iter()
+            .map(|(id, v)| {
+                (
+                    id.clone(),
+                    FastExtInfo {
+                        prompt: v.prompt.clone(),
+                        addr: if v.addr != "" {
+                            Some(v.addr.clone())
+                        } else {
+                            None
+                        },
+                    },
+                )
+            })
+            .collect();
+        log::info(format!("get config: {:#?}", fexts).as_str());
+        Ok(tonic::Response::new(daemon::FastConfig { fexts }))
+    }
+    // async fn get_config(
+    //     &self,
+    //     _: tonic::Request<Empty>,
+    // ) -> std::result::Result<tonic::Response<daemon::Config>, tonic::Status> {
+    //     let exts = self.config.lock().unwrap().file.exts.clone();
+    //     return Ok(tonic::Response::new(daemon::Config { exts }));
+    // }
 
-        Ok(tonic::Response::new(daemon::Prompt2Addr {
-            running: self
-                .config
-                .lock()
-                .unwrap()
-                .borrow_mut()
-                .file
-                .exts
-                .iter()
-                .filter_map(|(id, v)| {
-                    if v.addr != "" {
-                        Some((
-                            v.prompt.clone(),
-                            daemon::ExtAddrWithId {
-                                id: id.clone(),
-                                addr: v.addr.clone(),
-                            },
-                        ))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        }))
-    }
-    async fn get_config(
-        &self,
-        _: tonic::Request<defs::Empty>,
-    ) -> std::result::Result<tonic::Response<daemon::Config>, tonic::Status> {
-        let exts = self.config.lock().unwrap().file.exts.clone();
-        return Ok(tonic::Response::new(daemon::Config { exts }));
-    }
-
-    async fn set_config(
-        &self,
-        request: tonic::Request<daemon::Config>,
-    ) -> std::result::Result<tonic::Response<defs::Empty>, tonic::Status> {
-        self.config.lock().unwrap().file.exts = request.into_inner().exts;
-        return Ok(tonic::Response::new(defs::Empty {}));
-    }
+    // async fn set_config(
+    //     &self,
+    //     request: tonic::Request<daemon::Config>,
+    // ) -> std::result::Result<tonic::Response<Empty>, tonic::Status> {
+    //     self.config.lock().unwrap().file.exts = request.into_inner().exts;
+    //     return Ok(tonic::Response::new(Empty {}));
+    // }
 
     async fn get_ext_addr(
         &self,
