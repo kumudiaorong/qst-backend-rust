@@ -1,32 +1,34 @@
 use xlog_rs::log;
 
-use super::def::{common, daemon, extension};
+use super::def::{common, daemon};
 use crate::config;
 use common::Empty;
 use daemon::ExtInfo;
-use daemon::FastConfig;
 use daemon::FastExtInfo;
-use std::borrow::BorrowMut;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 pub struct Main {
-    config: Arc<Mutex<config::Config>>,
+    config: config::Config,
     handle: Mutex<std::collections::HashMap<String, std::process::Child>>,
 }
 
 impl Main {
-    pub fn new(cfg: &Arc<Mutex<config::Config>>) -> Self {
-        cfg.lock().unwrap().file.exts.insert(
-            "test".to_string(),
-            ExtInfo {
-                name: "qst-e-a".to_string(),
-                prompt: "-".to_string(),
-                dir: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug".to_string(),
-                exec: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug/qst-e-a".to_string(),
-                addr: "".to_string(),
-            },
-        );
+    pub fn new(config: config::Config) -> Self {
+        {
+            let mut binding = config.lock().unwrap();
+            binding.inner.exts.insert(
+                "test".to_string(),
+                ExtInfo {
+                    name: "qst-e-a".to_string(),
+                    prompt: "a".to_string(),
+                    dir: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug".to_string(),
+                    exec: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug/qst-e-a"
+                        .to_string(),
+                    addr: "".to_string(),
+                },
+            );
+        }
         Self {
-            config: Arc::clone(&cfg),
+            config,
             handle: Mutex::new(std::collections::HashMap::new()),
         }
     }
@@ -49,9 +51,10 @@ impl daemon::main_server::Main for Main {
         //         server::set_up_result::MOk { running: res },
         //     )),
         // }))
-        let mut binding = self.config.lock().unwrap();
-        let exts = &binding.borrow_mut().file.exts;
-        let fexts = exts
+        let binding = self.config.lock().unwrap();
+        let fexts = binding
+            .inner
+            .exts
             .iter()
             .map(|(id, v)| {
                 (
@@ -90,14 +93,16 @@ impl daemon::main_server::Main for Main {
         &self,
         request: tonic::Request<daemon::ExtId>,
     ) -> std::result::Result<tonic::Response<daemon::ExtAddr>, tonic::Status> {
-        let binding = self.config.lock().unwrap();
         let id = request.into_inner().id;
-        let app = binding.file.exts.get(&id);
+        let binding = self.config.lock().unwrap();
+        let app = binding.inner.exts.get(&id);
         if let Some(app) = app {
             if app.addr != "" {
                 return Ok(tonic::Response::new(daemon::ExtAddr {
                     addr: app.addr.clone(),
                 }));
+            } else if self.handle.lock().unwrap().contains_key(&id) {
+                return Err(tonic::Status::failed_precondition("wait"));
             } else {
                 log::info(format!("start app: {:#?}", app).as_str());
                 let handl = std::process::Command::new(&app.exec)
@@ -111,7 +116,7 @@ impl daemon::main_server::Main for Main {
                     .spawn()
                     .unwrap_or_else(|e| panic!("fail to spawn{}", e));
                 self.handle.lock().unwrap().insert(id.clone(), handl);
-                return Err(tonic::Status::unavailable("retry"));
+                return Err(tonic::Status::failed_precondition("retry"));
             }
         }
         return Err(tonic::Status::not_found("not found"));

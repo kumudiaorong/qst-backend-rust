@@ -11,7 +11,12 @@ tonic = "0.10.2"
 serde = { version = "1.0.189", features = ["derive"] }
 serde_yaml = "0.9.25"
 tokio = { version = "1.33.0", features = ["full"] }
-xlog-rs = "0.1.0"
+tokio-stream = { version = "0.1.5", features = ["net"] }
 uuid = { version = "1.5.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
+clap = { version = "4.5.1", features = ["derive"] }
+dirs = "5.0.1"
+xlog-rs = "0.1.0"
+xcfg-rs = { version = "0.2.1", features = ["keep"] }
+
 [build-dependencies]
 tonic-build = { version = "0.10.2", features = ["prost"] }
