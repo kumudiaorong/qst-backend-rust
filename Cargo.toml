@@ -18,7 +18,7 @@ tokio-stream = { version = "0.1.5", features = ["net"] }
 uuid = { version = "1.5.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
 clap = { version = "4.5.1", features = ["derive"] }
 dirs = "5.0.1"
-xlog-rs = "0.1.0"
+xlog-rs = { version = "0.3.1" }
 xcfg-rs = { version = "0.2.1", features = ["keep"] }
 
 [build-dependencies]

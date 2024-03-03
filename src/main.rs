@@ -6,7 +6,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 
 #[tokio::main]
 async fn main() -> Result<(), tonic::transport::Error> {
-    xlog_rs::log::init(std::io::stdout(), xlog_rs::log::Level::Trace);
+    xlog::log::init(std::io::stdout(), xlog::log::Level::Trace);
     let args = arg::Args::parse();
     let amc = config::init();
     tonic::transport::Server::builder()

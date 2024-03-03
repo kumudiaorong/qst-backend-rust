@@ -1,4 +1,4 @@
-use xlog_rs::log;
+use xlog::info;
 
 use super::def::{common, daemon};
 use crate::config;
@@ -14,18 +14,18 @@ pub struct Main {
 impl Main {
     pub fn new(config: config::Config) -> Self {
         {
-            let mut binding = config.lock().unwrap();
-            binding.inner.exts.insert(
-                "test".to_string(),
-                ExtInfo {
-                    name: "qst-e-a".to_string(),
-                    prompt: "a".to_string(),
-                    dir: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug".to_string(),
-                    exec: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug/qst-e-a"
-                        .to_string(),
-                    addr: "".to_string(),
-                },
-            );
+            // let mut binding = config.lock().unwrap();
+            // binding.inner.exts.insert(
+            //     "test".to_string(),
+            //     ExtInfo {
+            //         name: "qst-e-a".to_string(),
+            //         prompt: "a".to_string(),
+            //         dir: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug".to_string(),
+            //         exec: "/home/kmdr/pro/qst-ext-appsearcher-rust/target/debug/qst-e-a"
+            //             .to_string(),
+            //         addr: "".to_string(),
+            //     },
+            // );
         }
         Self {
             config,
@@ -59,12 +59,12 @@ impl daemon::main_server::Main for Main {
                 )
             })
             .collect();
-        log::info(format!("get config: {:#?}", fexts).as_str());
+        info!("get config: {:#?}", fexts);
         Ok(tonic::Response::new(daemon::FastConfig { fexts }))
     }
     async fn get_ext_addr(
         &self,
-        request: tonic::Request<daemon::ExtId>,
+        request: tonic::Request<daemon::ExtHint>,
     ) -> std::result::Result<tonic::Response<daemon::ExtAddr>, tonic::Status> {
         let id = request.into_inner().id;
         let binding = self.config.lock().unwrap();
@@ -77,7 +77,7 @@ impl daemon::main_server::Main for Main {
             } else if self.handle.lock().unwrap().contains_key(&id) {
                 return Err(tonic::Status::failed_precondition("wait"));
             } else {
-                log::info(format!("start app: {:#?}", app).as_str());
+                info!("start app: {:#?}", app);
                 let handl = std::process::Command::new(&app.exec)
                     .current_dir(&app.dir)
                     .args([
