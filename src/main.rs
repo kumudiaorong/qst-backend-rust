@@ -19,7 +19,11 @@ async fn main() -> Result<(), tonic::transport::Error> {
                 signal,
             )
             .await?;
-        amc.save();
+        if let Err(e) = amc.save() {
+            xlog::error!("fail to save config: {:?}", e);
+        }
+    } else {
+        xlog::error!("fail to init config");
     }
     Ok(())
 }
