@@ -1,75 +1,70 @@
 use std::{
-    collections::HashMap,
-    future::Future,
-    pin::Pin,
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 
-use serde::{Deserialize, Serialize};
 use xcfg::File as XFile;
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ExtInfo {
-    pub name: String,
-    pub prompt: String,
-    pub dir: String,
-    pub exec: String,
-    pub addr: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ExtRuntimeInfo {
-    pub expire: HashMap<String, i32>,
-}
-impl Default for ExtRuntimeInfo {
-    fn default() -> Self {
-        Self {
-            expire: HashMap::new(),
-        }
+mod inner {
+    use serde::{Deserialize, Serialize};
+    use std::collections::HashMap;
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ExtInfo {
+        pub name: String,
+        pub prompt: String,
+        pub dir: String,
+        pub exec: String,
+        pub addr: String,
+    }
+    #[derive(Debug, Deserialize, Serialize, Default)]
+    pub struct Info {
+        pub exts: HashMap<String, ExtInfo>,
+    }
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct ExtRuntimeInfo {
+        pub expire: i32,
+    }
+    #[derive(Debug, Clone, Default)]
+    pub struct RuntimeInfo {
+        pub exts: HashMap<String, ExtRuntimeInfo>,
     }
 }
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Info {
-    pub exts: std::collections::HashMap<String, ExtInfo>,
-}
-impl Default for Info {
-    fn default() -> Self {
-        Self {
-            exts: std::collections::HashMap::new(),
-        }
-    }
-}
-pub type Store = Arc<Mutex<XFile<Info>>>;
-pub type Runtime = Arc<Mutex<ExtRuntimeInfo>>;
-#[derive(Clone)]
+pub use inner::ExtRuntimeInfo;
+#[derive(Debug, Clone)]
 pub struct Config {
-    pub store: Store,
-    pub runtime: Runtime,
+    pub file: Arc<Mutex<XFile<inner::Info>>>,
+    pub runtime: Arc<Mutex<inner::RuntimeInfo>>,
+}
+impl Config {
+    fn from_path(value: PathBuf) -> Result<Self, xcfg::Error> {
+        let path = value.to_str().unwrap();
+        let mut file: XFile<inner::Info> = XFile::new().path(path);
+        file.load()?;
+        file.save()?;
+        let file = Arc::new(Mutex::new(file));
+        Ok(Self {
+            file,
+            runtime: Arc::new(Mutex::new(inner::RuntimeInfo::default())),
+        })
+    }
+    pub fn save(self) -> Result<(), xcfg::Error> {
+        let mut file= self.file.lock().unwrap();
+        let runtime = self.runtime.lock().unwrap();
+        file.inner.exts.iter_mut().for_each(|(k, v)| {
+            if let Some(expire) = runtime.exts.get(k) {
+                if expire.expire < 0 {
+                    v.addr.clear();
+                }
+            }else{
+                v.addr.clear();
+            }
+        });
+        file.save()
+    }
 }
 
-pub fn init() -> (Config, Pin<Box<dyn Future<Output = ()>>>) {
+pub fn init() -> Result<Config , xcfg::Error> {
     let path = dirs::home_dir().unwrap().join(".config/qst/backend.toml");
-    let mut file: XFile<Info> = XFile::new().path(path.to_str().unwrap());
-    let _ = file.load();
-    let _ = file.save();
-    let file = Arc::new(Mutex::new(file));
-    let move_file = file.clone();
-    let signal = async move {
-        let saver = xcfg::keep::Saver::new(move_file);
-        loop {
-            match saver.run() {
-                Ok(xcfg::keep::Action::TermSave) => {
-                    break;
-                }
-                _ => {}
-            }
-        }
-    };
-    (
-        Config {
-            store: file.clone(),
-            runtime: Arc::new(Mutex::new(ExtRuntimeInfo::default())),
-        },
-        Box::pin(signal),
-    )
+    let config = Config::from_path(path)?;
+    Ok(config)
 }

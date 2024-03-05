@@ -7,34 +7,37 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'qst-backend-rust'",
+            "name": "Debug executable 'qst-b'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=qst-backend-rust",
+                    "--bin=qst-b",
                     "--package=qst-backend-rust"
                 ],
                 "filter": {
-                    "name": "qst-backend-rust",
+                    "name": "qst-b",
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                "--port",
+                "50001"
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'qst-backend-rust'",
+            "name": "Debug unit tests in executable 'qst-b'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=qst-backend-rust",
+                    "--bin=qst-b",
                     "--package=qst-backend-rust"
                 ],
                 "filter": {
-                    "name": "qst-backend-rust",
+                    "name": "qst-b",
                     "kind": "bin"
                 }
             },

@@ -15,20 +15,20 @@ impl Ext {
 
 #[tonic::async_trait]
 impl extension::ext_server::Ext for Ext {
-    async fn set_ext_addr(
+    async fn config_ext(
         &self,
-        request: tonic::Request<extension::ExtAddrHint>,
+        request: tonic::Request<extension::ExtConfigHint>,
     ) -> Result<Response<common::Empty>, tonic::Status> {
         debug!("Set ext addr: {:?}", request);
         let inner = request.into_inner();
-        let mut binding = self.config.lock().unwrap();
-        binding.inner.exts.get_mut(&inner.id).unwrap().addr = inner.addr;
+        let mut binding = self.config.file.lock().unwrap();
+        binding.inner.exts.get_mut(&inner.id).unwrap().addr = inner.addr.clone();
+        if let Some(expire) = inner.expire {
+            let mut binding = self.config.runtime.lock().unwrap();
+            binding
+                .exts
+                .insert(inner.id, config::ExtRuntimeInfo { expire });
+        }
         Ok(Response::new(common::Empty {}))
-    }
-    async fn set_expire(
-        &self,
-        request: tonic::Request<extension::ExpireHint>,
-    ) -> Result<Response<common::Empty>, tonic::Status> {
-        todo!()
     }
 }
