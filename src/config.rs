@@ -30,6 +30,7 @@ mod inner {
     }
 }
 pub use inner::ExtRuntimeInfo;
+use xlog::warn;
 #[derive(Debug, Clone)]
 pub struct Config {
     pub file: Arc<Mutex<XFile<inner::Info>>>,
@@ -38,8 +39,8 @@ pub struct Config {
 impl Config {
     fn from_path(value: PathBuf) -> Result<Self, xcfg::Error> {
         let path = value.to_str().unwrap();
-        let mut file: XFile<inner::Info> = XFile::new().path(path);
-        file.load()?;
+        let mut file: XFile<inner::Info> = XFile::default().path(path);
+        let _ = warn!(res, file.load(), "fail to load config");
         file.save()?;
         let file = Arc::new(Mutex::new(file));
         Ok(Self {
@@ -48,14 +49,14 @@ impl Config {
         })
     }
     pub fn save(self) -> Result<(), xcfg::Error> {
-        let mut file= self.file.lock().unwrap();
+        let mut file = self.file.lock().unwrap();
         let runtime = self.runtime.lock().unwrap();
         file.inner.exts.iter_mut().for_each(|(k, v)| {
             if let Some(expire) = runtime.exts.get(k) {
                 if expire.expire < 0 {
                     v.addr.clear();
                 }
-            }else{
+            } else {
                 v.addr.clear();
             }
         });
@@ -63,7 +64,7 @@ impl Config {
     }
 }
 
-pub fn init() -> Result<Config , xcfg::Error> {
+pub fn init() -> Result<Config, xcfg::Error> {
     let path = dirs::home_dir().unwrap().join(".config/qst/backend.toml");
     let config = Config::from_path(path)?;
     Ok(config)

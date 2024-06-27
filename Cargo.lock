@@ -1462,9 +1462,9 @@ dependencies = [
 
 [[package]]
 name = "xcfg-rs"
-version = "0.2.2"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74dd1117a7f38683b2e8262b8e026dfa345f79d5876ce60ea583025c6fb6b243"
+checksum = "5c3f93ebcde1ccbc1dcc248dd1c21c8c7b4bff51a273de42efb5138fa6cac082"
 dependencies = [
  "serde",
  "toml",

@@ -20,7 +20,7 @@ clap = { version = "4.5.1", features = ["derive"] }
 dirs = "5.0.1"
 xlog-rs = { version = "0.3.1" }
 signal-hook = { version = "0.3.17" }
-xcfg-rs = { version = "0.2.2" }
+xcfg-rs = { version = "0.2.4" }
 
 [build-dependencies]
 tonic-build = { version = "0.11.0", features = ["prost"] }

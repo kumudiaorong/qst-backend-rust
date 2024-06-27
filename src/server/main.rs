@@ -4,9 +4,9 @@ use super::def::{common, daemon};
 use crate::config;
 use common::Empty;
 use daemon::FastExtInfo;
+use std::collections::HashMap;
 use std::sync::Mutex;
 use tonic::Response;
-use std::collections::HashMap;
 use tonic::Status;
 pub struct Main {
     config: config::Config,
@@ -38,7 +38,7 @@ impl daemon::main_server::Main for Main {
                     id.clone(),
                     FastExtInfo {
                         prompt: v.prompt.clone(),
-                        addr: if v.addr != "" {
+                        addr: if !v.addr.is_empty() {
                             Some(v.addr.clone())
                         } else {
                             None
@@ -58,10 +58,10 @@ impl daemon::main_server::Main for Main {
         let ext = binding.inner.exts.get(&id);
         let ext = ext.ok_or(Status::not_found("not found"))?;
         let r_info = self.config.runtime.lock().unwrap();
-        if let Some(_) = r_info.exts.get(&id) {
+        if r_info.exts.get(&id).is_some() {
             todo!("expire")
         }
-        if ext.addr != "" {
+        if !ext.addr.is_empty() {
             return Ok(Response::new(daemon::ExtAddr {
                 addr: ext.addr.clone(),
             }));
@@ -70,14 +70,15 @@ impl daemon::main_server::Main for Main {
         } else {
             info!("start app: {:#?}", ext);
             match std::process::Command::new(&ext.exec)
-            .current_dir(&ext.dir)
-            .args([
-                "--id",
-                &id,
-                "--uri",
-                format!("http://127.0.0.1:50001").as_str(),
-            ])
-            .spawn(){
+                .current_dir(&ext.dir)
+                .args([
+                    "--id",
+                    &id,
+                    "--uri",
+                    "http://127.0.0.1:50001".to_string().as_str(),
+                ])
+                .spawn()
+            {
                 Ok(handl) => {
                     self.handle.lock().unwrap().insert(id.clone(), handl);
                     return Err(Status::failed_precondition("retry"));
